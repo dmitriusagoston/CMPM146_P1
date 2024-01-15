@@ -1,3 +1,5 @@
+import queue
+
 def find_path (source_point, destination_point, mesh):
 
     """
@@ -40,8 +42,35 @@ def find_path (source_point, destination_point, mesh):
         if (box[0] <= dpx and box[1] >= dpx) and (box[2] <= dpy and box[3] >= dpy):
             dst_box = box
     
+    # # invalid selection
+    # if src_box == None or dst_box == None:
+    #     print("invalid selection for source point or destination point")
+    #     return
+            
     # adding keys and adj
-    boxes[src_box] = mesh['adj'][src_box]
-    boxes[dst_box] = mesh['adj'][dst_box]
+    try:
+        boxes[src_box] = mesh['adj'][src_box]
+        boxes[dst_box] = mesh['adj'][dst_box]
+    except:
+        print("No path!")
+        return path, boxes.keys()
 
+    # BFS complete search algo to determine if there is a valid path
+    frontier = queue.Queue()
+    frontier.put(src_box)
+    reached = set()
+    reached.add(src_box)
+
+    while not frontier.empty():
+        current = frontier.get()
+        for next in mesh['adj'][current]:
+            if next not in reached:
+                frontier.put(next)
+                reached.add(next)
+
+    # check for no valid path
+    if dst_box not in reached:
+        print("No path!")
+        return path, boxes.keys()
+    
     return path, boxes.keys()
