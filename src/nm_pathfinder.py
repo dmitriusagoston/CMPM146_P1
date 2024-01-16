@@ -1,4 +1,5 @@
 import queue
+import math
 
 def find_path (source_point, destination_point, mesh):
 
@@ -58,19 +59,56 @@ def find_path (source_point, destination_point, mesh):
     # BFS complete search algo to determine if there is a valid path
     frontier = queue.Queue()
     frontier.put(src_box)
-    reached = set()
-    reached.add(src_box)
+    came_from = dict()
+    came_from[src_box] = None
 
     while not frontier.empty():
         current = frontier.get()
+
+        if current == dst_box:
+            break
+
         for next in mesh['adj'][current]:
-            if next not in reached:
+            if next not in came_from:
                 frontier.put(next)
-                reached.add(next)
+                came_from[next] = current
 
     # check for no valid path
-    if dst_box not in reached:
+    if dst_box not in came_from:
         print("No path!")
         return path, boxes.keys()
     
+    cur = dst_box
+    path = []
+    dp = dict()
+    dp[dst_box] = destination_point
+    dp[src_box] = source_point
+    while cur != src_box:
+        # next box
+        next = came_from[cur]
+        # current detail point
+        cur_point = dp[cur]
+        # box 1 & 2 x ranges
+        b1x = (cur[0], cur[1])
+        b2x = (next[0], next[1])
+        # box 1 & 2 y ranges
+        b1y = (cur[2], cur[3])
+        b2y = (next[2], next[3])
+        # defining x & y ranges
+        x_range = (max(b1x[0], b2x[0]), min(b1x[1], b2x[1]))
+        y_range = (max(b1y[0], b2y[0]), min(b1y[1], b2y[1]))
+        # find detail point of next box (inefficient, can fix later)
+        min_dist = float('inf')
+        for x in range(x_range[0], x_range[1] + 1):
+            for y in range(y_range[0], y_range[1] + 1):
+                dist = math.sqrt(((cur_point[0] - x) ** 2)+ ((cur_point[1] - y) ** 2))
+                if dist < min_dist:
+                    detail_point = (x, y)
+        dp[next] = detail_point
+        path.append(cur_point)
+        cur = came_from[cur]
+
+    path.append(source_point)
+    path.reverse()
+
     return path, boxes.keys()
