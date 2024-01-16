@@ -1,3 +1,4 @@
+import math
 from maze_environment import load_level, show_level, save_level_costs
 from math import inf, sqrt
 from heapq import heappop, heappush
@@ -32,9 +33,10 @@ def dijkstras_shortest_path(initial_position, destination, graph, adj):
             # calculate cost along this path to child
             cost_to_child = priority + transition_cost(graph, cell, child)
             if child not in pathcosts or cost_to_child < pathcosts[child]:
-                pathcosts[child] = cost_to_child            # update the cost
+                pathcosts[child] = cost_to_child # update the cost
+                p = cost_to_child + heuristic(destination, child) # adding estimated distance
                 paths[child] = cell                         # set the backpointer
-                heappush(queue, (cost_to_child, child))     # put the child on the priority queue
+                heappush(queue, (p, child))     # put the child on the priority queue
             
     return False
 
@@ -100,6 +102,9 @@ def test_route(filename, src_waypoint, dst_waypoint):
         show_level(level, path)
     else:
         print("No path possible!")
+
+def heuristic(a, b):
+    return math.sqrt(abs(a[0] - b[0]) + abs(a[1] - b[1]))
 
 
 if __name__ == '__main__':
