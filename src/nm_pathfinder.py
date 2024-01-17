@@ -2,8 +2,41 @@ import queue
 from math import inf, sqrt
 from heapq import heappop, heappush
 
-def find_detail(point_curr, box_curr, box_next):
-    return
+def find_detail(cur_point, box_curr, box_next):
+    # box 1 & 2 x ranges
+    b1x = (box_curr[0], box_curr[1])
+    b2x = (box_next[0], box_next[1])
+    # box 1 & 2 y ranges
+    b1y = (box_curr[2], box_curr[3])
+    b2y = (box_next[2], box_next[3])
+    
+    # defining x & y ranges
+    # The "largest" (rightmost) left bound (x1), to the "smallest" (leftmost) right bound (x2)
+    x_range = (max(b1x[0], b2x[0]), min(b1x[1], b2x[1]))
+    # The "largest" (lowest) upper bound (y1), to the "smallest" (highest) lower bound (y2)
+    y_range = (max(b1y[0], b2y[0]), min(b1y[1], b2y[1]))
+    
+    # Coordinates of the next detail point (based off current detail point)
+    new_x = cur_point[0][0]
+    new_y = cur_point[0][1]
+    
+    # Recalculate the x value of the new detail point if it isn't in range
+    if cur_point[0][0] not in range(x_range[0], x_range[1] + 1):
+        if cur_point[0][0] < x_range[0]:
+            new_x = x_range[0]
+        else:
+            new_x = x_range[1]
+            
+    # Recalculate the y value of the new detail point if it isn't in range
+    if cur_point[0][1] not in range(y_range[0], y_range[1] + 1):
+        if cur_point[0][1] < y_range[0]:
+            new_y = y_range[0]
+        else:
+            new_y = y_range[1]
+    
+    new_cords = (new_x, new_y)
+    dist = heuristic(cur_point[0], new_cords)
+    return (new_cords, dist)
 
 def find_path (source_point, destination_point, mesh):
 
@@ -62,6 +95,7 @@ def find_path (source_point, destination_point, mesh):
     came_from[src_box] = None
     while not frontier.empty():
         current = frontier.get()
+        boxes[current] = current
 
         if current == dst_box:
             break
@@ -76,73 +110,39 @@ def find_path (source_point, destination_point, mesh):
         print("No path!")
         return path, boxes.keys()
     cur = dst_box
+    
+    # Detail points
     dp = dict()
     dp[dst_box] = destination_point, 0
-    #Default value is just the destination point to handle the edge case where the points are in the same box
-    dp[src_box] = destination_point, 0 #probably should replace 0 with distance between src and dst points
-    boxes = []
-    boxes.append(src_box)
-    boxes.append(dst_box)
+    #Default dp of src_box is just the destination point for the edge case where the points are in the same box
+    dp[src_box] = destination_point, 0
 
     # section for drawing line
-    # current problems:
-    # - final clean connection to source box/point
-    # - when boxes share two borders like big boxes on top left of brain
-
     while cur != src_box:
         # next box
-        next = came_from[cur]
-        boxes.append(next)
+        box_next = came_from[cur]
         # current detail point
         cur_point = dp[cur]
-        # box 1 & 2 x ranges
-        b1x = (cur[0], cur[1])
-        b2x = (next[0], next[1])
-        # box 1 & 2 y ranges
-        b1y = (cur[2], cur[3])
-        b2y = (next[2], next[3])
         
-        # defining x & y ranges
-        # The "largest" (lowest) upper bound (y1), to the "smallest" (highest) lower bound (y2)
-        y_range = (max(b1y[0], b2y[0]), min(b1y[1], b2y[1]))
-        # The "largest" (rightmost) left bound (x1), to the "smallest" (leftmost) right bound (x2)
-        x_range = (max(b1x[0], b2x[0]), min(b1x[1], b2x[1]))
         
-        # Coordinates of the next detail point
-        new_x = cur_point[0][0]
-        new_y = cur_point[0][1]
         
-        if cur_point[0][0] not in range(x_range[0], x_range[1] + 1):
-            if cur_point[0][0] < x_range[0]:
-                new_x = x_range[0]
-            else:
-                new_x = x_range[1]
-        if cur_point[0][1] not in range(y_range[0], y_range[1] + 1):
-            if cur_point[0][1] < y_range[0]:
-                new_y = y_range[0]
-            else:
-                new_y = y_range[1]
-        cords = (new_x, new_y)
-        dist = heuristic(cur_point[0], cords)
-        new_point = (cords, dist)
-        dp[next] = new_point
+        new_point = find_detail(cur_point, cur, box_next)
+        dp[box_next] = new_point
         path.append(cur_point[0])
-        if (next == src_box):
+        if (box_next == src_box):
             last = cur # idk what this is
             break
         cur = came_from[cur]
         
-    # Append the detail point to the path
+    # Append the last detail point to the path
     path.append(dp[src_box][0])
     # Append the source point to complete the path
     path.append(source_point)
-
+    # Reverse it since we built it from destination to source
     path.reverse()
-        
-    print(path)
+
     #path, dp_box = dijkstras_shortest_path(source_point, destination_point, src_box, dst_box, mesh, navigation_edges)
-    return path, boxes
-    # return path, boxes.keys()
+    return path, boxes.keys()
 
 def dijkstras_shortest_path(src_p, dest_p, initial_position, destination, graph, adj):
     """ Searches for a minimal cost path through a graph using Dijkstra's algorithm.
@@ -255,4 +255,7 @@ def transition_cost(level, cell, cell2):
     return distance * average_cost
 
 def heuristic(a, b):
-    return sqrt((a[0] - b[0]) ** 2 + abs(a[1] - b[1]) ** 2)
+    return euclidean_dist(a, b)
+
+def euclidean_dist(a,b):
+    return sqrt(abs(a[0] - b[0]) ** 2 + abs(a[1] - b[1]) ** 2)
