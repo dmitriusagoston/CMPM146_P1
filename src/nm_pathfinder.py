@@ -75,7 +75,8 @@ def find_path (source_point, destination_point, mesh):
     cur = dst_box
     dp = dict()
     dp[dst_box] = destination_point, 0
-    dp[src_box] = source_point, 0
+    #Default value is just the destination point to handle the edge case where the points are in the same box
+    dp[src_box] = destination_point, 0 #probably should replace 0 with distance between src and dst points
     boxes = []
     boxes.append(src_box)
     boxes.append(dst_box)
@@ -97,15 +98,16 @@ def find_path (source_point, destination_point, mesh):
         # box 1 & 2 y ranges
         b1y = (cur[2], cur[3])
         b2y = (next[2], next[3])
-
-        new_x = cur_point[0][0]
-        new_y = cur_point[0][1]
         
         # defining x & y ranges
         # The "largest" (lowest) upper bound (y1), to the "smallest" (highest) lower bound (y2)
         y_range = (max(b1y[0], b2y[0]), min(b1y[1], b2y[1]))
         # The "largest" (rightmost) left bound (x1), to the "smallest" (leftmost) right bound (x2)
         x_range = (max(b1x[0], b2x[0]), min(b1x[1], b2x[1]))
+        
+        # Coordinates of the next detail point
+        new_x = cur_point[0][0]
+        new_y = cur_point[0][1]
         
         if cur_point[0][0] not in range(x_range[0], x_range[1] + 1):
             if cur_point[0][0] < x_range[0]:
@@ -123,13 +125,18 @@ def find_path (source_point, destination_point, mesh):
         dp[next] = new_point
         path.append(cur_point[0])
         if (next == src_box):
-            last = cur
+            last = cur # idk what this is
             break
         cur = came_from[cur]
+        
+    # Append the detail point to the path
+    path.append(dp[src_box][0])
+    # Append the source point to complete the path
     path.append(source_point)
 
     path.reverse()
-
+        
+    print(path)
     #path, dp_box = dijkstras_shortest_path(source_point, destination_point, src_box, dst_box, mesh, navigation_edges)
     return path, boxes
     # return path, boxes.keys()
