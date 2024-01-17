@@ -2,6 +2,9 @@ import queue
 from math import inf, sqrt
 from heapq import heappop, heappush
 
+def find_detail(point_curr, box_curr, box_next):
+    return
+
 def find_path (source_point, destination_point, mesh):
 
     """
@@ -44,13 +47,13 @@ def find_path (source_point, destination_point, mesh):
         if (box[0] <= dpx and box[1] >= dpx) and (box[2] <= dpy and box[3] >= dpy):
             dst_box = box
     
-    # adding keys and adj
-    try:
-        boxes[src_box] = mesh['adj'][src_box]
-        boxes[dst_box] = mesh['adj'][dst_box]
-    except:
+    if (src_box is None) or (dst_box is None):
         print("No path!")
         return path, boxes.keys()
+
+    # adding keys and adj
+    boxes[src_box] = mesh['adj'][src_box]
+    boxes[dst_box] = mesh['adj'][dst_box]
 
     # BFS complete search algo to determine if there is a valid path
     frontier = queue.Queue()
