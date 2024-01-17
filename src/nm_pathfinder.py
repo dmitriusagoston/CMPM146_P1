@@ -1,5 +1,6 @@
 import queue
-import math
+from math import inf, sqrt
+from heapq import heappop, heappush
 
 def find_path (source_point, destination_point, mesh):
 
@@ -61,12 +62,11 @@ def find_path (source_point, destination_point, mesh):
     frontier.put(src_box)
     came_from = dict()
     came_from[src_box] = None
-
     while not frontier.empty():
         current = frontier.get()
 
-        if current == dst_box:
-            break
+        # if current == dst_box:
+        #     break
 
         for next in mesh['adj'][current]:
             if next not in came_from:
@@ -78,37 +78,134 @@ def find_path (source_point, destination_point, mesh):
         print("No path!")
         return path, boxes.keys()
     
-    cur = dst_box
-    path = []
-    dp = dict()
-    dp[dst_box] = destination_point
-    dp[src_box] = source_point
-    while cur != src_box:
-        # next box
-        next = came_from[cur]
-        # current detail point
-        cur_point = dp[cur]
-        # box 1 & 2 x ranges
-        b1x = (cur[0], cur[1])
-        b2x = (next[0], next[1])
-        # box 1 & 2 y ranges
-        b1y = (cur[2], cur[3])
-        b2y = (next[2], next[3])
-        # defining x & y ranges
-        x_range = (max(b1x[0], b2x[0]), min(b1x[1], b2x[1]))
-        y_range = (max(b1y[0], b2y[0]), min(b1y[1], b2y[1]))
-        # find detail point of next box (inefficient, can fix later)
-        min_dist = float('inf')
-        for x in range(x_range[0], x_range[1] + 1):
-            for y in range(y_range[0], y_range[1] + 1):
-                dist = math.sqrt(((cur_point[0] - x) ** 2)+ ((cur_point[1] - y) ** 2))
-                if dist < min_dist:
-                    detail_point = (x, y)
-        dp[next] = detail_point
-        path.append(cur_point)
-        cur = came_from[cur]
+    # cur = dst_box
+    # path = []
+    # path.append(destination_point)
+    # while cur != src_box:
+    #     path.append(dp[cur])
+    #     cur = came_from[cur]
 
-    path.append(source_point)
-    path.reverse()
+    # path.append(source_point)
+    # path.reverse()
 
+    path, dp_box = dijkstras_shortest_path(source_point, destination_point, src_box, dst_box, mesh, navigation_edges)
+
+    # path.append(destination_point)
+    for b in path:
+        b = dp_box[b]
+        if b not in boxes:
+            boxes[b] = mesh['adj'][b]
     return path, boxes.keys()
+
+def dijkstras_shortest_path(src_p, dest_p, initial_position, destination, graph, adj):
+    """ Searches for a minimal cost path through a graph using Dijkstra's algorithm.
+
+    Args:
+        initial_position: The initial cell from which the path extends.
+        destination: The end location for the path.
+        graph: A loaded level, containing walls, spaces, and waypoints.
+        adj: An adjacency function returning cells adjacent to a given cell as well as their respective edge costs.
+
+    Returns:
+        If a path exits, return a list containing all cells from initial_position to destination.
+        Otherwise, return None.
+
+    """
+    paths = {initial_position: []}          # maps cells to previous cells on path
+    pathcosts = {initial_position: 0}       # maps cells to their pathcosts (found so far)
+    queue = []
+    heappush(queue, (0, initial_position))  # maintain a priority queue of cells
+    dp = dict()
+    dp_box = dict()
+    dp[destination] = dest_p
+    dp[initial_position] = src_p
+    dp_box[dest_p] = destination
+    dp_box[src_p] = initial_position
+    
+    while queue:
+        priority, cell = heappop(queue)
+        if cell == destination:
+            paths = path_to_cell(cell, paths)
+            for i, b in enumerate(paths):
+                paths[i] = dp[b]
+            return paths, dp_box
+
+
+        
+        # investigate children
+        for child in graph['adj'][cell]:
+            # find detail points
+            ########################################
+
+            # current detail point
+            cur_point = dp[cell]
+            # box 1 & 2 x ranges
+            b1x = (cell[0], cell[1])
+            b2x = (child[0], child[1])
+            # box 1 & 2 y ranges
+            b1y = (cell[2], cell[3])
+            b2y = (child[2], child[3])
+            # defining x & y ranges
+            x_range = (max(b1x[0], b2x[0]), min(b1x[1], b2x[1]))
+            y_range = (max(b1y[0], b2y[0]), min(b1y[1], b2y[1]))
+            # find detail point of next box (inefficient, can fix later)
+            min_dist = float('inf')
+            for x in range(x_range[0], x_range[1] + 1):
+                for y in range(y_range[0], y_range[1] + 1):
+                    temp = (x,y)
+                    dist = sqrt(((cur_point[0] - x) ** 2)+ ((cur_point[1] - y) ** 2))
+                    if dist < min_dist:
+                        detail_point = (x, y)
+            dp[child] = detail_point
+            dp_box[detail_point] = child
+            #########################################
+        # calculate cost along this path to child
+            cost_to_child = priority + transition_cost(graph, cell, child)
+            if child not in pathcosts or cost_to_child < pathcosts[child]:
+                pathcosts[child] = cost_to_child # update the cost
+                p = cost_to_child + heuristic(destination, child) # adding estimated distance
+                paths[child] = cell                         # set the backpointer
+                heappush(queue, (p, child))     # put the child on the priority queue
+            
+    return False
+
+def path_to_cell(cell, paths):
+    if cell == []:
+        return []
+    return path_to_cell(paths[cell], paths) + [cell]
+    
+
+
+
+def navigation_edges(level, cell):
+    """ Provides a list of adjacent cells and their respective costs from the given cell.
+
+    Args:
+        level: A loaded level, containing walls, spaces, and waypoints.
+        cell: A target location.
+
+    Returns:
+        A list of tuples containing an adjacent cell's coordinates and the cost of the edge joining it and the
+        originating cell.
+
+        E.g. from (0,0):
+            [((0,1), 1),
+             ((1,0), 1),
+             ((1,1), 1.4142135623730951),
+             ... ]
+    """
+    res = []
+    for delta in [(x, y) for x in [-1,0,1] for y in [-1,0,1] if not (x==0 and y==0)]:
+        new = (cell[0] + delta[0], cell[1] + delta[1])
+        if new in level['spaces']:
+            res.append((new, transition_cost(level, new, cell)))
+    return res
+
+def transition_cost(level, cell, cell2):
+    distance = sqrt((cell2[0] - cell[0])**2 + (cell2[1] - cell[1])**2)
+    # average_cost = (level['spaces'][cell] + level['spaces'][cell2])/2
+    average_cost = 1
+    return distance * average_cost
+
+def heuristic(a, b):
+    return sqrt((a[0] - b[0]) ** 2 + abs(a[1] - b[1]) ** 2)
