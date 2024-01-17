@@ -1,4 +1,3 @@
-import math
 from maze_environment import load_level, show_level, save_level_costs
 from math import inf, sqrt
 from heapq import heappop, heappush
@@ -104,7 +103,7 @@ def test_route(filename, src_waypoint, dst_waypoint):
         print("No path possible!")
 
 def heuristic(a, b):
-    return math.sqrt(abs(a[0] - b[0]) + abs(a[1] - b[1]))
+    return sqrt(abs(a[0] - b[0]) + abs(a[1] - b[1]))
 
 
 if __name__ == '__main__':
