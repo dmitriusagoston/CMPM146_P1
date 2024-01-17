@@ -44,11 +44,6 @@ def find_path (source_point, destination_point, mesh):
         if (box[0] <= dpx and box[1] >= dpx) and (box[2] <= dpy and box[3] >= dpy):
             dst_box = box
     
-    # # invalid selection
-    # if src_box == None or dst_box == None:
-    #     print("invalid selection for source point or destination point")
-    #     return
-            
     # adding keys and adj
     try:
         boxes[src_box] = mesh['adj'][src_box]
@@ -65,8 +60,8 @@ def find_path (source_point, destination_point, mesh):
     while not frontier.empty():
         current = frontier.get()
 
-        # if current == dst_box:
-        #     break
+        if current == dst_box:
+            break
 
         for next in mesh['adj'][current]:
             if next not in came_from:
@@ -77,25 +72,69 @@ def find_path (source_point, destination_point, mesh):
     if dst_box not in came_from:
         print("No path!")
         return path, boxes.keys()
-    
-    # cur = dst_box
-    # path = []
-    # path.append(destination_point)
-    # while cur != src_box:
-    #     path.append(dp[cur])
-    #     cur = came_from[cur]
+    cur = dst_box
+    dp = dict()
+    dp[dst_box] = destination_point, 0
+    dp[src_box] = source_point, 0
+    boxes = []
+    boxes.append(src_box)
+    boxes.append(dst_box)
 
-    # path.append(source_point)
-    # path.reverse()
+    # section for drawing line
+    # current problems:
+    # - final clean connection to source box/point
+    # - when boxes share two borders like big boxes on top left of brain
 
-    path, dp_box = dijkstras_shortest_path(source_point, destination_point, src_box, dst_box, mesh, navigation_edges)
+    while cur != src_box:
+        # next box
+        next = came_from[cur]
+        boxes.append(next)
+        # current detail point
+        cur_point = dp[cur]
+        # box 1 & 2 x ranges
+        b1x = (cur[0], cur[1])
+        b2x = (next[0], next[1])
+        # box 1 & 2 y ranges
+        b1y = (cur[2], cur[3])
+        b2y = (next[2], next[3])
 
-    # path.append(destination_point)
-    for b in path:
-        b = dp_box[b]
-        if b not in boxes:
-            boxes[b] = mesh['adj'][b]
-    return path, boxes.keys()
+        new_x = cur_point[0][0]
+        new_y = cur_point[0][1]
+        # defining x & y ranges
+        if b1y[0] >= b2y[0]:  
+            y_range = (min(b1y[0], b2y[0]), max(b1y[1], b2y[1]))
+        if b1y[0] <= b2y[0]:
+            y_range = (max(b1y[0], b2y[0]), min(b1y[1], b2y[1]))
+        if b1x[0] >= b2x[0]:
+            x_range = (max(b1x[0], b2x[0]), min(b1x[1], b2x[1]))
+        if b1x[0] <= b2x[0]:
+            x_range = (min(b1x[0], b2x[0]), max(b1x[1], b2x[1]))
+        if cur_point[0][0] not in range(x_range[0], x_range[1] + 1):
+            if cur_point[0][0] < x_range[0]:
+                new_x = x_range[0]
+            else:
+                new_x = x_range[1]
+        if cur_point[0][1] not in range(y_range[0], y_range[1] + 1):
+            if cur_point[0][1] < y_range[0]:
+                new_y = y_range[0]
+            else:
+                new_y = y_range[1]
+        cords = (new_x, new_y)
+        dist = heuristic(cur_point[0], cords)
+        new_point = (cords, dist)
+        dp[next] = new_point
+        path.append(cur_point[0])
+        if (next == src_box):
+            last = cur
+            break
+        cur = came_from[cur]
+    path.append(source_point)
+
+    path.reverse()
+
+    #path, dp_box = dijkstras_shortest_path(source_point, destination_point, src_box, dst_box, mesh, navigation_edges)
+    return path, boxes
+    # return path, boxes.keys()
 
 def dijkstras_shortest_path(src_p, dest_p, initial_position, destination, graph, adj):
     """ Searches for a minimal cost path through a graph using Dijkstra's algorithm.
@@ -147,7 +186,7 @@ def dijkstras_shortest_path(src_p, dest_p, initial_position, destination, graph,
             b2y = (child[2], child[3])
             # defining x & y ranges
             x_range = (max(b1x[0], b2x[0]), min(b1x[1], b2x[1]))
-            y_range = (max(b1y[0], b2y[0]), min(b1y[1], b2y[1]))
+            y_range = (min(b1y[0], b2y[0]), max(b1y[1], b2y[1]))
             # find detail point of next box (inefficient, can fix later)
             min_dist = float('inf')
             for x in range(x_range[0], x_range[1] + 1):
