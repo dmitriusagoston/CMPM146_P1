@@ -100,15 +100,13 @@ def find_path (source_point, destination_point, mesh):
 
         new_x = cur_point[0][0]
         new_y = cur_point[0][1]
+        
         # defining x & y ranges
-        if b1y[0] >= b2y[0]:  
-            y_range = (min(b1y[0], b2y[0]), max(b1y[1], b2y[1]))
-        if b1y[0] <= b2y[0]:
-            y_range = (max(b1y[0], b2y[0]), min(b1y[1], b2y[1]))
-        if b1x[0] >= b2x[0]:
-            x_range = (max(b1x[0], b2x[0]), min(b1x[1], b2x[1]))
-        if b1x[0] <= b2x[0]:
-            x_range = (min(b1x[0], b2x[0]), max(b1x[1], b2x[1]))
+        # The "largest" (lowest) upper bound (y1), to the "smallest" (highest) lower bound (y2)
+        y_range = (max(b1y[0], b2y[0]), min(b1y[1], b2y[1]))
+        # The "largest" (rightmost) left bound (x1), to the "smallest" (leftmost) right bound (x2)
+        x_range = (max(b1x[0], b2x[0]), min(b1x[1], b2x[1]))
+        
         if cur_point[0][0] not in range(x_range[0], x_range[1] + 1):
             if cur_point[0][0] < x_range[0]:
                 new_x = x_range[0]
