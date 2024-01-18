@@ -9,7 +9,7 @@
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/src/nm_interactive.py",
-            "args": ["../input/homer.png", "../input/homer.png.mesh.pickle", "2"],
+            "args": ["../input/gran-turismo-logo-w-and-b.png", "../input/gran-turismo-logo-w-and-b.png.mesh.pickle", "2"],
             "cwd": "${workspaceFolder}/src",
             "console": "integratedTerminal",
             "justMyCode": true
