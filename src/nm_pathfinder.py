@@ -150,7 +150,7 @@ def find_path (source_point, destination_point, mesh):
 
     """
 
-    dp_path, dp_box = a_star_shortest_path(source_point, destination_point, src_box, dst_box, mesh)
+    dp_path, dp_box = bi_a_star(source_point, destination_point, src_box, dst_box, mesh)
     if not dp_path:
         print("No Path!")
         return [],[]
@@ -163,6 +163,91 @@ def find_path (source_point, destination_point, mesh):
     # dp_path.insert(0, source_point)
     # dp_path.append(destination_point)
     return dp_path, list(dp_box)
+
+def bi_a_star(src_p, dest_p, src_box, dest_box, graph):
+    """ Searches for a minimal cost path through a graph using the bidirectional A* algorithm.
+
+    Args:
+        src_p: initial point
+        dest_p: destination point
+        src_box: The initial cell from which the path extends.
+        dest_box: The end cell for the path.
+        graph: A loaded level, containing walls, spaces, and waypoints.
+
+    Returns:
+        If a path exits, return a list containing all cells from src_box to destination.
+        Otherwise, return None.
+
+    """
+    prev_f = {src_box: []}          # maps cells to previous cells on path
+    prev_b = {dest_box: []}
+    pathcosts_f = {src_box: 0}       # maps cells to their pathcosts (found so far)
+    pathcosts_b = {dest_box: 0}
+    queue = []
+    heappush(queue, (0, src_box, 'destination'))  # maintain a priority queue of cells
+    heappush(queue, (0, dest_box, 'source'))
+    dp_f = dict()
+    dp_b = dict()
+    dp_f_box = set()
+    dp_f[src_box] = src_p, 0
+    dp_b[dest_box] = dest_p, 0
+    dp_f_box.add(src_box)
+    dp_f_box.add(dest_box)
+    dp_b_box = dp_f_box.copy()
+
+    while queue:
+        priority, cell, cur_goal = heappop(queue)
+        if cur_goal == 'destination':
+            cur_prev = prev_f
+            other_prev = prev_b
+            cur_pathcosts = pathcosts_f
+            cur_dp = dp_f
+            other_dp = dp_b
+            cur_dp_box = dp_f_box
+            other_dp_box = dp_b_box
+            goal = dest_box
+        else:
+            cur_prev = prev_b
+            other_prev = prev_f
+            cur_pathcosts = pathcosts_b
+            cur_dp = dp_b
+            other_dp = dp_f
+            cur_dp_box = dp_b_box
+            other_dp_box = dp_f_box
+            goal = src_box
+
+
+        if (cell in prev_b and goal == dest_box) or (cell in prev_f and goal == src_box):
+            path = path_to_cell(cell, cur_prev)
+            path_other = path_to_cell(cell, other_prev)
+            for i, b in enumerate(path):
+                path[i] = cur_dp[b][0]
+            for i, b in enumerate(path_other):
+                path_other[i] = other_dp[b][0]
+            path.reverse()
+            path = path_other + path
+            # path.insert(0, src_p)
+            cur_dp_box = cur_dp_box.union(other_dp_box)
+            #path.append(dest_p)        
+            return path, cur_dp_box # FIX THIS
+        
+        cur_point = cur_dp[cell][0]
+        # investigate children
+        for child in graph['adj'][cell]:
+            # find detail point for each child
+            if child not in cur_dp:
+                cur_dp[child] = find_detail(cur_point, cell, child)
+            
+            # calculate cost along this path to child
+            cost_to_child = priority + cur_dp[child][1]
+            if child not in cur_pathcosts or cost_to_child < cur_pathcosts[child]:
+                cur_dp_box.add(child)
+                cur_pathcosts[child] = cost_to_child # update the cost
+                p = cost_to_child + heuristic(child, goal) # adding estimated distance
+                cur_prev[child] = cell                         # set the backpointer
+                heappush(queue, (p, child, cur_goal))     # put the child on the priority queue
+            
+    return False, False
 
 def a_star_shortest_path(src_p, dest_p, src_box, dest_box, graph):
     """ Searches for a minimal cost path through a graph using the A* algorithm.
