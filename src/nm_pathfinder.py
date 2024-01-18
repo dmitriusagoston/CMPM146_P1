@@ -1,6 +1,7 @@
 import queue
 from math import inf, sqrt
 from heapq import heappop, heappush
+import random
 
 def find_detail(cur_point, box_curr, box_next):
     # box 1 & 2 x ranges
@@ -91,6 +92,12 @@ def find_path (source_point, destination_point, mesh):
     boxes[src_box] = mesh['adj'][src_box]
     boxes[dst_box] = mesh['adj'][dst_box]
 
+    # Detail points
+    dp = dict()
+    dp[dst_box] = destination_point, 0
+    #Default dp of src_box is just the destination point for the edge case where the points are in the same box
+    dp[src_box] = source_point, 0
+
     # BFS complete search algo to determine if there is a valid path
     frontier = queue.Queue()
     frontier.put(src_box)
@@ -101,11 +108,13 @@ def find_path (source_point, destination_point, mesh):
         current = frontier.get()
         boxes[current] = current
 
-        if current == dst_box:
-            break
-
+        # if current == dst_box:
+        #     break
+        cur_point = dp[current][0]
         for next in mesh['adj'][current]:
             if next not in came_from:
+                new_point = find_detail(cur_point, current, next)
+                dp[next] = new_point
                 frontier.put(next)
                 came_from[next] = current
 
@@ -115,26 +124,23 @@ def find_path (source_point, destination_point, mesh):
         return path, boxes.keys()
     cur = dst_box
     
-    # Detail points
-    dp = dict()
-    dp[dst_box] = destination_point, 0
-    #Default dp of src_box is just the destination point for the edge case where the points are in the same box
-    dp[src_box] = destination_point, 0
 
+    
     # section for drawing line
     while cur != src_box:
         # next box
         box_next = came_from[cur]
         # current detail point
-        cur_point = dp[cur]
+        cur_point = dp[cur][0]
         
         new_point = find_detail(cur_point, cur, box_next)
         dp[box_next] = new_point
-        path.append(cur_point[0])
+        #path.append(cur_point[0])
         if (box_next == src_box):
             break
         cur = came_from[cur]
-        
+    """
+    """ 
     # Append the last detail point to the path
     path.append(dp[src_box][0])
     # Append the source point to complete the path
@@ -148,6 +154,14 @@ def find_path (source_point, destination_point, mesh):
     if not dp_path:
         print("No Path!")
         return [],[]
+    # for i, b in enumerate(dp_path):
+    #     dp_path[i] = dp[b][0]
+    
+    
+
+    # dp_path = dp_path[1:] + [dp_path[0]]
+    # dp_path.insert(0, source_point)
+    # dp_path.append(destination_point)
     return dp_path, list(dp_box)
 
 def a_star_shortest_path(src_p, dest_p, src_box, dest_box, graph):
@@ -171,8 +185,8 @@ def a_star_shortest_path(src_p, dest_p, src_box, dest_box, graph):
     heappush(queue, (0, src_box))  # maintain a priority queue of cells
     dp = dict()
     dp_box = set()
-    dp[src_box] = dest_p, 0
-    dp[dest_box] = dest_p, 0
+    dp[src_box] = src_p, 0
+    #dp[dest_box] = dest_p, 0
     dp_box.add(src_box)
     dp_box.add(dest_box)
     
@@ -182,20 +196,23 @@ def a_star_shortest_path(src_p, dest_p, src_box, dest_box, graph):
             path = path_to_cell(cell, paths)
             for i, b in enumerate(path):
                 path[i] = dp[b][0]
+            # path.insert(0, src_p)
+            path.append(dest_p)            
             return path, dp_box
         
+        cur_point = dp[cell][0]
         # investigate children
         for child in graph['adj'][cell]:
             # find detail point for each child
-            cur_point = dp[cell][0]
-            dp[child] = find_detail(cur_point, cell, child)
+            if child not in dp:
+                dp[child] = find_detail(cur_point, cell, child)
             
             # calculate cost along this path to child
             cost_to_child = priority + dp[child][1]
             if child not in pathcosts or cost_to_child < pathcosts[child]:
                 dp_box.add(child)
                 pathcosts[child] = cost_to_child # update the cost
-                p = cost_to_child + heuristic(dest_box, child) # adding estimated distance
+                p = cost_to_child + heuristic(child, dest_box) # adding estimated distance
                 paths[child] = cell                         # set the backpointer
                 heappush(queue, (p, child))     # put the child on the priority queue
             
